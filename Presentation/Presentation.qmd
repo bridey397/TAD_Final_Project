@@ -1,0 +1,175 @@
+---
+title: Final Project Diversity, Equity, and Inclusion word meanings in political texts.
+subtitle: "PPOL 6801: Text as Data: Computational Linguistics"
+author: "Bridgette Sullivan"
+date: "April 24, 2025"
+format:
+  revealjs: 
+    theme: solarized
+    embed-resources: true
+    self-contained: true
+editor: visual
+---
+
+```{r}
+
+# clear global environment
+rm(list = ls())
+
+# set seed
+set.seed(12345)
+
+# load packages
+library(tidyverse)
+library(conText)
+library(quanteda)
+library(kableExtra)
+library(assertr)
+
+# set processing/display options
+options(mc.cores = parallel::detectCores())
+options(dplyr.summarise.inform = FALSE)
+options(warn = -1)
+
+# set relative paths
+root       <- file.path(getwd() %>% dirname())
+#author_rep <- file.path(root,"02_DataverseMaterials","dataverse_files")
+
+# define kable styling options
+kable_style <- function(df) {
+  
+  df %>%
+  kbl(full_width = T, 
+      align = "l",
+      booktabs = T) %>%
+  kable_styling(latex_options = c("repeat_header","scale_down","HOLD_position")) 
+}
+
+```
+
+# Introduction
+
+## Background {.smaller}
+
+**Motivation**
+
+On the first day of the Trump administration, there was an Executive Order titled "Ending Radical And Wasteful Government DEI Programs And Preferencing". This order aims to get rid of any government DEI programs as they are seen as "wasteful" and to eliminate a previous Executive Order put out by Biden on his first day in office. This order has lead to some mistakenly flagged items for removal, and begs the following research questions:
+
+-   What is the meaning of the words **diversity**, **equity**, and **inclusion** across political texts?
+
+    -   Does this meaning vary with the President in power? In this case, Trump (first term) versus Biden?
+
+-   What are the topics of political documents that use these words?
+
+## Background {.smaller}
+
+**Motivating Example**
+
+In accordance with the Order, the Defense Department ordered the removal of "references to a World War II Medal of Honor recipient, the Enola Gay aircraft that dropped an atomic bomb on Japan and the first women to pass Marine infantry training" from public facing materials (Copp et al., 2025).
+
+This deletion is seemingly not the goal of the Trump administration, but shows that they might be utilizing a 'Ctrl+F' approach. Essentially they are searching for specific words without actually understanding the context of the article, record, etc. surrounding said word of interest.
+
+## Data Collection {.smaller}
+
+Used the Federal Register API with search of key words 'diversity', 'equity', and 'inclusion' to create a corpus for each. Ensured use of 'relevance' for order to not front load the articles retrieved and started from date of first Trump presidency.
+
+Variables:
+
+-   **Excerpts**: shorter instance of text including the key word of interest.
+-   **Abstract**: description of article
+-   **Publication Date**: used to create covariate for Presidents
+
+## Methods {.smaller}
+
+Utilized these main methods in analysis:
+
+-   **Keywords in Context:** Using `quanteda` to understand the surrounding words that give context to word embeddings.
+
+-   **Word Embeddings:** Using `text2vec` to retrieve matrices used in causal word embeddings.
+
+-   **Causal Word Embeddings:** Using `context` package to retrieve normed betas for predicting the word embeddings based on binary variable of President.
+
+-   **LDA:** Using `topicmodel` package to create topics from abstracts, using various k and alpha values with Gibbs method.
+
+-   **Key-Word Focused LDA:** Using `topicmodel` and `context` packages to understand specific topics within focal word context windows.
+
+# Results
+
+## Keywords in Context: Diversity {.smaller}
+
+![](images/fg01-diversity-kwic-03.jpg)
+
+## Keywords in Context: Equity {.smaller}
+
+![](images/fg02-equity-kwic-03.jpg)
+
+## Keywords in Context: Inclusion {.smaller}
+
+![](images/fg03-inclusion-kwic-02.jpg)
+
+## Word Embeddings: Diversity {.smaller}
+
+```         
+      also  including  inclusion    genetic geographic  
+  0.5064601  0.4500886  0.4135259  0.4120238  0.4086985 
+```
+
+![](images/fg09-diversity-causal-embeddings-01.jpg)
+
+## Word Embeddings: Equity {.smaller}
+
+```         
+securities    options  including     health   proposed   
+0.4588153  0.4041476  0.4020701  0.3992371  0.3906676 
+```
+
+![](images/fg08-equity-causal-embeddings.jpg){width="500"}
+
+## Word Embeddings: Inclusion {.smaller}
+
+```         
+proposed        may    information   also        additional 
+0.4522496   0.4431619   0.4302587   0.4200677   0.3701530 
+```
+
+![](images/fg07-inclusion-causal_embeddings.jpg){width="500"}
+
+## LDA: Diversity {.smaller}
+
+![](images/fg06-diversity-abstract-LDA-01.jpg)
+
+## LDA: Equity {.smaller}
+
+![](images/fg05-equity-abstract-LDA-03.jpg)
+
+## LDA: Inclusion {.smaller}
+
+![](images/fg04-inclusion-abstract-LDA-01.jpg)
+
+## Keyword Focused LDA: Diversity {.smaller}
+
+![](images/fg12-diversity-excerpts-LDA-keyword.jpg)
+
+## Keyword Focused LDA: Equity {.smaller}
+
+![](images/fg11-equity-excerpts-LDA-keyword.jpg)
+
+## Keyword Focused LDA: Inclusion {.smaller}
+
+![](images/fg10-inclusion-excerpts-LDA-keyword.jpg)
+
+## Lessons learned and next steps {.smaller}
+
+-   These words have obvious meanings that are outside of the context of DEI. Diversity might bring meaning in an scientific context and equity might have relevance in financial or economic policy. Inclusion did not have distinct different policy areas, but might just be used more generally in political documents, which could cause difficulties throughout many policy areas.
+
+-   Word meanings individually are different than when used together, searching for them this way will likely not get the anticipated results. Looking at a topic comparison across the words used together versus separately might be insightful.
+
+-   Federal documents can be repetitive, might be better to remove all words including the focal word to increase interpretability and create clearer topics.
+
+-   Bootstrapping and permutations take a long time, completing these methods would improve analysis for causal embeddings in future.
+
+## References {.smaller}
+
+Copp, T., Baldor, L. C., & Vineys, K. (2025, March 7). War heroes and military firsts are among 26,000 images flagged for removal in Pentagon’s dei purge. AP News. <https://apnews.com/article/dei-purge-images-pentagon-diversity-women-black-8efcfaec909>954f4a24bad0d49c78074
+
+The United States Government. (2025, January 21). Ending radical and wasteful government dei programs and preferencing. The White House. <https://www.whitehouse.gov/presidential-actions/2025/01/ending-radical-and-wasteful-gover>nment-dei-programs-and-preferencing/

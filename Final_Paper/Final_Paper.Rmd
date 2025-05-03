@@ -62,7 +62,7 @@ kable_style <- function(df) {
 
 ## I. Introduction
 
-On the first day of the Trump administration, an Executive Order titled "Ending Radical And Wasteful Government DEI Programs And Preferencing" was signed. This order aims to get rid of any government Diversity, Equity, and Inclusion (DEI) programs as they are seen as "wasteful" and to eliminate a previous Executive Order put out by Biden on his first day in office. This order has led to some mistakenly flagged items for removal, like references to the Enola Gay aircraft in museums and public facing materials. This aircraft was a recipient of the World War II Medal of Honor, yet was ordered for removal by the Defense Department in correspondence to the Executive Order (Copp et al., 2025). This deletion is seemingly not the goal of the Trump administration, but shows that they might be utilizing a word search approach that targets specific words to eliminate any items that might be associated with DEI. In the case of the Enola Gay, there was not an effort to understand the context in which these words are placed, but rather to sweep the federal government of any explicit mention. These actions beg the following research questions around word meanings for the specific words of ‘diversity’, ‘equity’, and ‘inclusion’:
+On the first day of the Trump administration, an Executive Order titled "Ending Radical And Wasteful Government DEI Programs And Preferencing" was signed (White House, 2025). This order aims to get rid of any government Diversity, Equity, and Inclusion (DEI) programs as they are seen as "wasteful" and to eliminate a previous Executive Order put out by Biden on his first day in office. This order has led to some mistakenly flagged items for removal, like references to the Enola Gay aircraft in museums and public facing materials. This aircraft was a recipient of the World War II Medal of Honor, yet was ordered for removal by the Defense Department in correspondence to the Executive Order (Copp et al., 2025). This deletion is seemingly not the goal of the Trump administration, but shows that they might be utilizing a word search approach that targets specific words to eliminate any items that might be associated with DEI. In the case of the Enola Gay, there was not an effort to understand the context in which these words are placed, but rather to sweep the federal government of any explicit mention. These actions beg the following research questions around word meanings for the specific words of ‘diversity’, ‘equity’, and ‘inclusion’:
 
 1.  What is the meaning of the words diversity, equity, and inclusion across political texts?
 
@@ -74,7 +74,7 @@ This report will discuss data sources, methods utilized, findings, and some less
 
 ## II. Data and Methods
 
-Data on political texts from various federal agencies were collected using the Federal Register API by searching for the keywords "diversity," "equity," and "inclusion," resulting in a separate corpus for each focal word. Furthermore, use of the 'relevance' option for the order argument was necessary to not front-load the articles retrieved and started from date of first Trump presidency. This created a corpus with a unit of observation at the article level. This API pull retrieved various variables, but the ones of interest were the following:
+Data on political texts from various federal agencies were collected using the Federal Register API by searching for the keywords "diversity," "equity," and "inclusion," resulting in a separate corpus for each focal word. Furthermore, use of the "relevance" option for the order argument was necessary to not front-load the articles retrieved and started from date of first Trump presidency. This created a corpus with a unit of observation at the article level. This API pull retrieved various variables, but the ones of interest were the following:
 
 -   Excerpts. This variable was the sections of the text that included the focal word of interest.
 
@@ -94,35 +94,35 @@ To answer the research questions detailed above, the following methods were used
 
 #### Keywords in Context
 
-This first method explored the words directly surrounding the word of interest. Use of the quanteda and conText packages was helpful to tokenize and then retrieve the words in the specified window around the key word. Using a window of 6 words around our focal word has been proven in previous literature to be an effective window size, so this is the chosen parameter. Once all documents have the appropriate window, we can look at individual instances of key words or we can look at the aggregate to see which words are used most in context with our key words of interest. We can look at the aggregation of all documents by unlisting all of the tokens and then creating visualizations to better understand the keywords in context.
+This first method explored the words directly surrounding the word of interest. Use of the `quanteda` and `conText` packages was helpful to tokenize and then retrieve the words in the specified window around the key word. Using a window of 6 words around our focal word has been proven in previous literature to be an effective window size, so this is the chosen parameter. Once all documents have the appropriate window, individual instances of key words can be examined, or the aggregate can be analyzed to identify which words most frequently appear in context with the key terms of interest. Aggregation across all documents can be achieved by unlisting the tokens and generating visualizations to better understand the keywords in context.
 
 #### Word Embeddings
 
-This method of analysis required using a combination of the quanteda and text2vec packages. First, using the quanteda package to tokenize and create a feature co-occurrence matrix. Then, using the text2vec package, a glove matrix was approximated from given parameters and then fit with the feature co-occurrence matrix to retrieve embeddings for each of the words in the matrix. Then we find the nearest neighbors to our words of interest to understand the words with the closest meaning from the given corpus.
+This method of analysis required using a combination of the `quanteda` and `text2vec` packages. First, using the `quanteda` package to tokenize and create a feature co-occurrence matrix. Then, using the `text2vec` package, a glove matrix was approximated from given parameters and then fit with the feature co-occurrence matrix to retrieve embeddings for each of the words in the matrix. The nearest neighbors to the words of interest are then identified to determine which terms have the most similar meanings within the given corpus.
 
 #### Causal Word Embeddings
 
-Using the word embeddings from the previous section, we can use the context package to create causal word embeddings to better understand the differences in the ways that different agencies meant by each of our focal words during different presidential terms. The following equation was used for causal inference:
+Using the word embeddings from the previous section, the `conText` package can be applied to create causal word embeddings that highlight differences in how various agencies used each focal word during different presidential terms. The following equation was used for causal inference:
 
-$Word Embedding = \beta_{0} + \beta_{1}*President + \epsilon$
+<center>$Word Embedding = \beta_{0} + \beta_{1}*President + \epsilon$</center>
 
-In this equation, President is a binary variable indicating whether or not the president was Trump (1) or Biden (0). This variable was simply created by using the publication date and determining which president was in power during each article's publication. Using the context package allowed for creation of a transformation matrix based on the given corpus. This transformation matrix is used in the model to take the embeddings and transform into beta values (??). Then the matrix of beta values is normed to get one distinct beta value that is easier to comprehend significance than an entire vector of beta values. We then plot these values in a time series to better understand changes in beta values over time and across presidential terms.
+In this equation, President is a binary variable indicating whether or not the president was Trump (1) or Biden (0). This variable was simply created by using the publication date and determining which president was in power during each article's publication. Using the `conText` package allowed for creation of a transformation matrix based on the given corpus. This transformation matrix is used in the model to take the embeddings and transform into beta values for the covariate of interest. Then the matrix of beta values is normed to get one distinct beta value that is easier to comprehend significance than an entire vector of beta values. These values are then plotted as a time series to illustrate changes in beta values over time and across presidential terms.
 
 #### LDA
 
-In addition to word meanings, we wanted to better understand the topics that were present in the detection of these focal words. This would help us to better understand which topics would likely be targeted by a search for each of these words in federal documentation. The LDA approach used the topicmodels package in junction with the quanteda package on the 'abstract' variable instead of the 'excerpts'. This difference in approach was to better understand the entirety of the article rather than the smaller snippet given in the excerpt. The same DFM approach from before was used and then an LDA model was run with various parameters tested to ensure the best results. Differing k values, alpha values, and methods were used to achieve the most sensical topics across each of the focal words. Then the top words from each topic were plotted to understand the overall meaning of each topic.
+In addition to word meanings, the analysis also aimed to better understand the topics associated with the detection of these focal words. This would help us to better understand which topics would likely be targeted by a search for each of these words in federal documentation. The LDA approach used the `topicmodels` package in junction with the `quanteda` package on the "abstract" variable instead of the "excerpts". This difference in approach was to better understand the entirety of the article rather than the smaller snippet given in the excerpt. The same DFM approach from before was used and then an LDA model was run with various parameters tested to ensure the best results. Differing k values, alpha values, and methods were used to achieve the most sensical topics across each of the focal words. Then the top words from each topic were plotted to understand the overall meaning of each topic.
 
 #### Key-Word Focused LDA
 
-This approach was very similar to LDA, but instead of using the 'abstract' variable, we went back to using the 'excerpts' variable. This was to use the keyword specifically and the surrounding words to understand the topics specifically surrounding the focal words. This meant using the quanteda, topicmodels, and context packages. The same general approach was taken as the LDA method, but used the tokens_context function to only include the words in a specified window to the focal word in the model to create topics.
+This approach was very similar to LDA, but instead of using the "abstract" variable, the "excerpts" variable was used, again. This was to use the keyword specifically and the surrounding words to understand the topics specifically surrounding the focal words. This meant using the `quanteda`, `topicmodels`, and `conText` packages. The same general approach was taken as the LDA method, but used the `tokens_context` function to only include the words in a specified window to the focal word in the model to create topics.
 
 ## IV. Results
 
 The results from the analysis described above provided interesting insights for each individual focal word. Some were surprising, others less so.
 
-#### Diversity: used in a scientific and educational context & more so in DEI than other words
+#### Diversity: Strong ties to education, science, and DEI
 
-Throughout the various analyses, the clear finding for the focal word 'diversity' was that it was mainly used in a scientific context and was most commonly seen in a DEI context. First, in the keywords in context, it is obvious that diversity is seen near by words like biological, genetic, and geography, indicating that diversity may be used in more of a scientific context to talk about subjects like biodiversity and others. Additionally, some of the top words are the other focal words, indicating that diversity is most often used in the context of DEI in comparison to the other focal words analyzed here.
+Throughout the various analyses, the clear finding for the focal word "diversity" was that it was mainly used in a scientific context and was most commonly seen in a DEI context. First, in the keywords in context, it is obvious that diversity is seen near by words like "biological", "genetic", and "geography", indicating that diversity may be used in more of a scientific context to talk about subjects like biodiversity and others. Additionally, some of the top words are the other focal words, indicating that diversity is most often used in the context of DEI in comparison to the other focal words analyzed here.
 
 <center>
 
@@ -132,83 +132,62 @@ Throughout the various analyses, the clear finding for the focal word 'diversity
 
 When looking at the topics created by LDA using abstracts, there is a clear emergence of two topics surrounding science and environmental concerns, and another than might focus on education in topic 4. These patterns continue to emerge in the keyword focused LDA, with the first two topics focused on scientific contexts and the third topic potentially around DEI measures, which supports the claim from the keywords in context analysis that this word is used more than the other two for discussing DEI.
 
-![Diversity Abstract LDA](images/fg06-diversity-abstract-LDA.jpg){#divLDA width="250"}![Diversity Keyword Focused LDA](images/fg12-diversity-excerpts-LDA-keyword.jpg){#divKWLDA width="350"}
+![Diversity Abstract LDA](images/fg06-diversity-abstract-LDA.jpg){#divLDA width="49%"}![Diversity Keyword Focused LDA](images/fg12-diversity-excerpts-LDA-keyword.jpg){#divKWLDA width="49%"}
 
-#### Equity: used in a financial context
+#### Equity: Financial and healthcare associations
 
-For the focal word 'equity' we also found that it was used in a context other than DEI. Primarily, it was used in a financial context with top words exchange, option, and securities which would all refer to various aspects of financial markets.
+For the focal word "equity", findings show it was also used in a context other than DEI. Primarily, it was used in a financial context with top words "exchange", "option", and "securities" which would all refer to various aspects of financial markets. Additionally, there are some words that might indicate "equity" being used in a healthcare context, with words like "health" showing up as a top word in context of "equity". Finally, the focal word is used often in its own context, with "equity" showing up the most of any other word. This is something to consider in future iterations of the research to potentially investigate or exclude.
 
-#### Inclusion: less clear topics
+<center>
+
+![Equity KWIC](images/fg02-equity-kwic.jpg){width="500"}
+
+</center>
+
+When looking at the topics formed from the abstracts of documents containing "equity", there is a less clear theme. The first two topics appear to only have meanings around words more generally used across notices and proposals. The third topic starts to get more at the health topic seen in the keywords in context with "health" appearing again as a top word in that topic. When drilling down to the keyword topic models, there are two clear topics centering around using equity in a financial context with the same type of words used in these topics as seen in the keywords in context.
+
+![Equity Abstract LDA](images/fg05-equity-abstract-LDA.jpg){width="49%"} ![Equity Keyword Focused LDA](images/fg11-equity-excerpts-LDA-keyword.jpg){width="49%"}
+
+#### Inclusion: Broad and less defined themes
+
+Conversely, the focal word "inclusion" does not display any clear divergence in context in comparison to "diversity" and "equity". The keywords in context appear to be mostly general and could apply to many different policy areas. The one interesting potential topic is the use of "FAA" as a top word in context, which could signal discussion of aviation, but no other top words here seem to signal that specific context.
+
+<center>
+
+![Inclusion KWIC](images/fg03-inclusion-kwic.jpg){width="500"}
+
+</center>
+
+
+The topics from abstracts and excerpts provide a similar conclusion, with some interesting overlaps. For the abstracts LDA topic modeling, topics 3 and 4 appear to be more general jargon used across the board to describe notices and proposals in many different policy context. Topics 1 and 2 show that there might be a slight overlap with the "diversity" context in that there is an emergence of topics surrounding science with "EPA", "drug", and "environment" as top words across those two topics. When looking at the keyword focused LDA, the first two topics appear to just be general jargon again, but the third topic starts to look more like there is a discussion of DEI initiatives.
+
+![Inclusion Abstract LDA](images/fg04-inclusion-abstract-LDA-01.jpg){width="49%"}![Inclusion Keyword Focused LDA](images/fg10-inclusion-excerpts-LDA-keyword.jpg){width="49%"}
 
 #### Focal word usage together
 
+As seen throughout a majority of the results above, there are many instances where it is obvious that these focal words are used around each other often. This might be in the context of DEI or another context, but regardless this is an interesting finding. These words are often used together and would support the claim that a search for one of them would be helpful in finding notices or proposals containing information on DEI.
+
 #### Trump versus Biden: Differing usage
 
--   Visualizations preferred over tables whenever possible
+There is a distinct difference in the way that agencies use the focal words during the different administrations. The normed betas over time are seen below and all are well above 0 meaning that there is a difference in the way that they are used across administrations. An interesting observation here is that the betas for "diversity" do not change over time, but the betas for "equity" and "inclusion" do show a drastic decline right at the end of the Trump administration. This jump signals the difference in the words usage over time as the administration changes, but also shows that for "diversity" the words are used somewhat similarly over time and there is not as much of a jump.
+
+![](images/fg09-diversity-causal-embeddings.jpg){width="49%"}![](images/fg08-equity-causal-embeddings.jpg){width="49%"}
+
+<center>
+![](images/fg07-inclusion-causal_embeddings.jpg){width="49%"}
+</center>
 
 ## V. Discussion
 
--   Reiteration of main results
+Overall, there is evidence that the focal words "diversity", "equity", and "inclusion" are used in ways other than in referencing DEI. There are various other contexts, like scientific, educational, and financial contexts that these words may be used in. On the other hand, they are also used in their expected contexts of DEI, but less so than maybe expected. Additionally, the ways that these words are used across the Trump and Biden administration is different, but it is unclear by how much. The normed beta values for the binary president variable show that agencies at different times use these words in differing contexts, which might have implications for specific policy areas that are targeted by this Executive Order.
 
 #### Implications for targeting various topic areas
 
-#### Something
+The results found show that many policy areas could be impacted by the flagging of the focal words "diversity", "equity", and "inclusion". The words appear just in reference to specific subject matter jargon rather than in reference to DEI programs within those policy areas. This could cause efficiency and administrative burden issues if these various agencies have to edit or remove documents to not use specified words that are crucial to basic understanding of the subject matter. Additionally, these words are common in every day language, so almost every agency could be affected by an Executive Order like this one that orders removal of any public facing notices or proposals including these words.
 
 #### Future directions
 
-Looking at using justice, belonging those words are cited as being used with these in DEI.
-
-bootstrapping
-
-## VI. Appendix
-
-Figure 1
-
-![](images/fg01-diversity-kwic.jpg)
-
-Figure 2
-
-![](images/fg02-equity-kwic.jpg)
-
-Figure 3
-
-![](images/fg03-inclusion-kwic.jpg)
-
-Figure 4
-
-![](images/fg06-diversity-abstract-LDA.jpg)
-
-Figure 5
-
-![](images/fg05-equity-abstract-LDA.jpg)
-
-Figure 6
-
-![](images/fg04-inclusion-abstract-LDA-01.jpg)
-
-Figure 7
-
-![](images/fg09-diversity-causal-embeddings.jpg)
-
-Figure 8
-
-![](images/fg08-equity-causal-embeddings.jpg)
-
-Figure 9
-
-![](images/fg07-inclusion-causal_embeddings.jpg)
-
-Figure 10
-
-![](images/fg12-diversity-excerpts-LDA-keyword.jpg)
-
-Figure 11
-
-![](images/fg11-equity-excerpts-LDA-keyword.jpg)
-
-Figure 12
-
-![](images/fg10-inclusion-excerpts-LDA-keyword.jpg)
+In future iterations of this project, there are multiple directions to explore. There are additional words that might be of interest to observe, like "justice" and "belonging", which are commonly used in junction with DEI specific words (McKinsey & Company, 2022). Additionally, looking at including bi-grams and tri-grams might be interesting to understand more complex word patterns that might emerge from keywords in context or for topic modeling. Finally, using bootstrapping and permutations for causal word embeddings may make the results more robust.
 
 ## VII. References
 

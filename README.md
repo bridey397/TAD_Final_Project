@@ -13,153 +13,68 @@ This repository includes materials to analyze the meanings of the words "diversi
 
 ## Repository Structure & File Contents
 
+### Project Folder Structure
 
-+------------------+--------------------------------------------------------------------------------------------------+-----------------------------------------+---------------------------------------------------------------------------------------------------------------+
-| Folder           | Folder Description                                                                               | Included File                           | File Description                                                                                              |
-+==================+==================================================================================================+=========================================+===============================================================================================================+
-| Code             | Includes all code files used to pull data from Federal Register API and create visualizations.   | 01_API.ipynb                            | Python file used to pull data from Federal Register                                                           |
-+------------------+--------------------------------------------------------------------------------------------------+-----------------------------------------+---------------------------------------------------------------------------------------------------------------+
-|                  |                                                                                                  | 02_Data_Cleaning.rmd                    | RMD file used to clean data and create visualizations from kwic, word embeddings, and LDA.                    |
-+------------------+--------------------------------------------------------------------------------------------------+-----------------------------------------+---------------------------------------------------------------------------------------------------------------+
-| Final_Paper      | Includes final paper RMD file. PDF to be sent via email.                                         | Final_Paper.Rmd                         | Rmd file containing final paper with findings, results, and discussions.                                      |
-+------------------+--------------------------------------------------------------------------------------------------+-----------------------------------------+---------------------------------------------------------------------------------------------------------------+
-| Outputs          | Includes visualizations for all code as jpg files.                                               | fg01-diversity-kwic.jpg                 | Outputs for each focal word keyword in context bar plot.                                                      |
-|                  |                                                                                                  |                                         |                                                                                                               |
-|                  |                                                                                                  | fg02-equity-kwic.jpg                    |                                                                                                               |
-|                  |                                                                                                  |                                         |                                                                                                               |
-|                  |                                                                                                  | fg03-inclusion-kwic.jpg                 |                                                                                                               |
-+------------------+--------------------------------------------------------------------------------------------------+-----------------------------------------+---------------------------------------------------------------------------------------------------------------+
-|                  |                                                                                                  | fg04-inclusion-abstract-LDA.jpg         | Outputs for each focal word for topic modeling using LDA with abstracts to understand overall article topics. |
-|                  |                                                                                                  |                                         |                                                                                                               |
-|                  |                                                                                                  | fg05-equity-abstract-LDA.jpg            |                                                                                                               |
-|                  |                                                                                                  |                                         |                                                                                                               |
-|                  |                                                                                                  | fg06-diversity-abstract-LDA.jpg         |                                                                                                               |
-+------------------+--------------------------------------------------------------------------------------------------+-----------------------------------------+---------------------------------------------------------------------------------------------------------------+
-|                  |                                                                                                  | fg07-inclusion-causal-embeddings.jpg    | Outputs for each focal word for causal word embeddings where president is the binary variable.                |
-|                  |                                                                                                  |                                         |                                                                                                               |
-|                  |                                                                                                  | fg08-equity-causal-embeddings.jpg       |                                                                                                               |
-|                  |                                                                                                  |                                         |                                                                                                               |
-|                  |                                                                                                  | fg09-diversity-causal-embeddings.jpg    |                                                                                                               |
-+------------------+--------------------------------------------------------------------------------------------------+-----------------------------------------+---------------------------------------------------------------------------------------------------------------+
-|                  |                                                                                                  | fg10-inclusion-excerpts-LDA-keyword.jpg | Outputs for each focal word for topic modeling with keyword focused LDA using excerpts.                       |
-|                  |                                                                                                  |                                         |                                                                                                               |
-|                  |                                                                                                  | fg11-equity-excerpts-LDA-keyword.jpg    |                                                                                                               |
-|                  |                                                                                                  |                                         |                                                                                                               |
-|                  |                                                                                                  | fg12-diversity-excerpts-LDA-keyword.jpg |                                                                                                               |
-+------------------+--------------------------------------------------------------------------------------------------+-----------------------------------------+---------------------------------------------------------------------------------------------------------------+
-| Presentation     | Includes presentation slides for in class presentation. HTML file was too large to include here. | Presentation.qmd                        | QMD file with presentation slides from class.                                                                 |
-+------------------+--------------------------------------------------------------------------------------------------+-----------------------------------------+---------------------------------------------------------------------------------------------------------------+
-| Project_Proposal | Includes original project proposal                                                               | TAD_Final_Project_Proposal.pdf          | PDF file with original project proposal.                                                                      |
-+------------------+--------------------------------------------------------------------------------------------------+-----------------------------------------+---------------------------------------------------------------------------------------------------------------+
-| Raw_Data         | Includes raw data from API pull for each focal word.                                             | diversity_data.json                     | JSON file with diversity corpus.                                                                              |
-+------------------+--------------------------------------------------------------------------------------------------+-----------------------------------------+---------------------------------------------------------------------------------------------------------------+
-|                  |                                                                                                  | equity_data.json                        | JSON file with equity corpus.                                                                                 |
-+------------------+--------------------------------------------------------------------------------------------------+-----------------------------------------+---------------------------------------------------------------------------------------------------------------+
-|                  |                                                                                                  | inclusion_data.json                     | JSON file with inclusion corpus.                                                                              |
-+------------------+--------------------------------------------------------------------------------------------------+-----------------------------------------+---------------------------------------------------------------------------------------------------------------+
+#### `Code`
+Includes all code files used to pull data from the Federal Register API and create visualizations.
 
+- `01_API.ipynb`: Python file used to pull data from Federal Register.  
+- `02_Data_Cleaning.rmd`: RMD file used to clean data and create visualizations from KWIC, word embeddings, and LDA.
 
-<table>
-	<thead>
-    		<tr>
-	      		<th>Folder</th>
-	      		<th>Folder Description</th>
-			<th>Included File</th>
-			<th>File Description</th>
-    		</tr>
-  	</thead>
-  	<tbody>
-    		<tr>
-        		<td><tt>Clean Data</tt></td>
-			<td>Includes clean data after processing </td>
-			<td><tt>readme.txt</tt></td>
-			<td></td>
-    		</tr>
-		<tr>
-        		<td rowspan="2"><tt>Code</tt></td>
-			<td rowspan="2">Includes all code files used to pull data from Federal Register API and create visualizations.</td>
-			<td><tt>01_API.ipynb</tt></td>
-			<td>Python file used to pull data from Federal Register</td>
-    		</tr>
-            <td><tt>02_Data_Cleaning.rmd</tt></td>
-			<td>RMD file used to clean data and create visualizations from kwic, word embeddings, and LDA.</td>
-    		</tr>
-    		<tr>
-        		<td rowspan="10"><tt>03_Replication</tt></td>
-			<td rowspan="10">Includes Bartlett & Sullivan's replication materials</td>
-			<td><tt>00_alc_context_exemplar.qmd</tt></td>
-			<td>QMD script to replicate "Framework in Action"</td>
-    		</tr>
-    		<tr>
-        		</td><td><tt>00_alc_context_exemplar.html</tt></td>
-			<td>HTML output from running <tt>00_alc_context_exemplar.qmd</tt> script; presents code collated alongside output</td>
-		</tr>
-        <tr>
-        		</td><td><tt>01_use_case1_group_meanings.qmd</tt></td>
-			<td>QMD script to replicate framework use case 1</td>
-		</tr>
-        <tr>
-        		</td><td><tt>01_use_case1_group_meanings.html</tt></td>
-			<td>HTML output from running <tt>01_use_case1_group_meanings.qmd</tt> script; presents code collated alongside output</td>
-		</tr>
-        <tr>
-        		</td><td><tt>02_use_case2_temporal_changes.qmd</tt></td>
-			<td>QMD script to replicate framework use case 2</td>
-		</tr>
-        <tr>
-        		</td><td><tt>02_use_case2_temporal_changes.html</tt></td>
-			<td>HTML output from running <tt>02_use_case2_temporal_changes.qmd</tt> script; presents code collated alongside output</td>
-		</tr>
-        <tr>
-        		</td><td><tt>02a_use_case2_extension.qmd</tt></td>
-			<td>QMD script to execute validation</td>
-		</tr>
-        <tr>
-        		</td><td><tt>02a_use_case2_extension.html</tt></td>
-			<td>HTML output from running <tt>02a_use_case2_extension.qmd</tt> script; presents code collated alongside output</td>
-		</tr>
-		<tr>
-        		</td><td><tt>bootstrap.css</tt></td>
-			<td>CSS code called in QMD files for HTML formatting</td>
-		</tr>
-        <tr>
-        		</td><td><tt>/_plots</tt></td>
-			<td>Plots replicated from analyses; called in <tt>Bartlett-Sullivan-replication-2-presentation.qmd</tt></td>
-		</tr>
-  		<tr>
-        		<td rowspan="5"><tt>04_Presentation</tt></td>
-			<td rowspan="5">Includes presentation materials</td>
-			<td><tt>Bartlett-Sullivan-replication-2-presentation.qmd</tt></td>
-			<td>QMD script to produce presentation</td>
-    		</tr>
-    		<tr>
-        		</td><td><tt>Bartlett-Sullivan-replication-2-presentation.html</tt></td>
-			<td>Presentation given on 4/3/25</td>
-		</tr>
-        <tr>
-        		</td><td><tt>semantic_shift_walkthrough.qmd</tt></td>
-			<td>QMD walk-through of "Framework in action" as part of presentation (Rodriguez et al. analytic code + Bartlett, Sullivan formatting) </td>
-		</tr>
-        <tr>
-        		</td><td><tt>semantic_shift_walkthrough.html</tt></td>
-			<td>HTML output from running <tt>semantic_shift_walkthrough.qmd</tt></td>
-		</tr>
-		<tr>
-        		</td><td><tt>bootstrap.scss</tt></td>
-			<td>CSS code called in <tt>Bartlett-Sullivan-replication-2-presentation.qmd</tt> for HTML formatting in <tt>Bartlett-Sullivan-replication-2-presentation.html</tt></td>
-		</tr>
-  		<tr>
-        		<td rowspan="2"><tt>05_FinalReport</tt></td>
-			<td rowspan="2">Includes final paper materials</td>
-			<td><tt>Bartlett-Sullivan-replication-2-paper.rmd</tt></td>
-			<td>RMD script to produce <tt>Bartlett-Sullivan-replication-2-paper.pdf</tt></td>
-    		</tr>
-    		<tr>
-        		</td><td><tt>Bartlett-Sullivan-replication-2-paper.pdf</tt></td>
-			<td>Bartlett & Sullivan final paper</td>
-		</tr>
+---
 
-</table>
+#### `Final_Paper`
+Includes final paper RMD file. PDF to be sent via email.
+
+- `Final_Paper.Rmd`: RMD file containing final paper with findings, results, and discussion.
+
+---
+
+#### `Outputs`
+Includes visualizations for all code as JPG files.
+
+**Keyword-in-Context (KWIC) Bar Plots:**
+- `fg01-diversity-kwic.jpg`
+- `fg02-equity-kwic.jpg`
+- `fg03-inclusion-kwic.jpg`
+
+**LDA Topic Modeling (Abstracts):**
+- `fg04-inclusion-abstract-LDA.jpg`
+- `fg05-equity-abstract-LDA.jpg`
+- `fg06-diversity-abstract-LDA.jpg`
+
+**Causal Word Embeddings (President as Binary Variable):**
+- `fg07-inclusion-causal-embeddings.jpg`
+- `fg08-equity-causal-embeddings.jpg`
+- `fg09-diversity-causal-embeddings.jpg`
+
+**LDA Topic Modeling (Keyword-Focused on Excerpts):**
+- `fg10-inclusion-excerpts-LDA-keyword.jpg`
+- `fg11-equity-excerpts-LDA-keyword.jpg`
+- `fg12-diversity-excerpts-LDA-keyword.jpg`
+
+---
+
+#### `Presentation`
+Includes presentation slides for in-class presentation. (Note: HTML file too large to include.)
+
+- `Presentation.qmd`: QMD file with presentation slides.
+
+---
+
+#### `Project_Proposal`
+Includes original project proposal.
+
+- `TAD_Final_Project_Proposal.pdf`: PDF file with original project proposal.
+
+---
+
+#### `Raw_Data`
+Includes raw data from API pull for each focal word.
+
+- `diversity_data.json`: JSON file with diversity corpus.  
+- `equity_data.json`: JSON file with equity corpus.  
+- `inclusion_data.json`: JSON file with inclusion corpus.
 
 ## Author
 

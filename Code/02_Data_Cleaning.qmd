@@ -1,0 +1,839 @@
+---
+title: "Final Project: Data Cleaning"
+author: "Bridgette Sullivan"
+date: "`r Sys.Date()`"
+format: html
+theme: litera
+toc: TRUE
+toc-location: left
+toc-depth: 7
+embed-resources: TRUE
+linkcolor: "black"
+editor: visual
+fontsize: 12pt
+css: bootstrap.css
+page-layout: full
+---
+
+### Set Up
+
+```{r}
+#| message: FALSE
+#| warning: FALSE
+#| code-fold: TRUE
+
+# clear global environment
+rm(list = ls())
+
+# set seed
+set.seed(2323)
+
+# load packages
+library(tidyverse)
+library(quanteda)
+library(cluster)
+library(rjson)
+library(rvest)
+library(dplyr)
+library(purrr)
+library(jsonlite)
+library(tibble)
+library(conText)
+
+
+# set processing/display options
+options(mc.cores = parallel::detectCores())
+options(dplyr.summarise.inform = FALSE)
+options(warn = -1)
+
+# set relative paths
+root       <- file.path(getwd() %>% dirname())
+
+```
+
+### Import JSON data
+
+```{r}
+# Diversity
+json_file = 'diversity_data.json'
+
+diversity_data <- jsonlite::fromJSON(file.path(root, 'Raw_Data', json_file))
+
+# Then convert  the JSON data to dataframe 
+diversity_df <- as.data.frame(diversity_data) 
+
+
+# Equity
+json_file = 'equity_data.json'
+
+equity_data <- jsonlite::fromJSON(file.path(root, 'Raw_Data', json_file))
+
+# Then convert  the JSON data to dataframe 
+equity_df <- as.data.frame(equity_data) 
+
+
+# Inclusion
+json_file = 'inclusion_data.json'
+
+inclusion_data <- jsonlite::fromJSON(file.path(root, 'Raw_Data', json_file))
+
+# Then convert  the JSON data to dataframe 
+inclusion_df <- as.data.frame(inclusion_data) 
+```
+
+### Keywords in Context
+
+```{r}
+
+# convert headlines into a corpus; converting tokens into DFM
+set.seed(2025)
+
+kwic_viz = function(df, word){
+  
+  tokens <- corpus(df, text_field = "excerpts") %>%
+  tokens(remove_punct = TRUE, remove_numbers = TRUE, remove_symbols = TRUE, remove_url = TRUE) %>%
+  tokens_remove(pattern = stopwords("en")) %>%
+  tokens_tolower()
+  
+
+
+# find contexts around inclusion
+  toks <- tokens_context(tokens, word, window = 6L, valuetype = "fixed", hard_cut = FALSE, rm_keyword = TRUE, verbose = TRUE)
+
+
+  flat_toks <- unlist(toks)
+
+
+
+  word_counts <- tibble(word = flat_toks) %>%
+  count(word, sort = TRUE)
+
+  word_counts %>%
+    slice_max(n, n = 15) %>%  # top 15 words
+    ggplot(aes(x = reorder(word, n), y = n)) +
+    geom_col(fill = "dodgerblue") +
+    coord_flip() +
+    labs(title = paste0("Most Common Words Around '", str_to_title(word), "'"),
+         x = "Word", y = "Count") +
+    theme_minimal()
+  
+}
+
+
+fg01 = kwic_viz(diversity_df, 'diversity')
+fg01
+ggsave(filename = file.path(root, "Outputs/fg01-diversity-kwic.jpg"), plot = fg01, height = 10, width = 15, dpi = 1000)
+
+
+fg02 = kwic_viz(equity_df, 'equity')
+fg02
+ggsave(filename = file.path(root, "Outputs/fg02-equity-kwic.jpg"), plot = fg01, height = 10, width = 15, dpi = 1000)
+
+fg03 = kwic_viz(inclusion_df, 'inclusion')
+fg03
+ggsave(filename = file.path(root, "Outputs/fg03-inclusion-kwic.jpg"), plot = fg01, height = 10, width = 15, dpi = 1000)
+
+
+```
+
+### Word Embeddings
+
+##### Inclusion
+
+```{r}
+#trump_inclusion_data = inclusion_df[inclusion_df$publication_date < '2021-01-20',]
+#biden_inclusion_data = inclusion_df[inclusion_df$publication_date >= '2021-01-20' & inclusion_df$publication_date < '2025-01-20' ,]
+
+library(text2vec) # for implementation of GloVe algorithm
+library(stringr) # to handle text strings
+library(umap) # for dimensionality reduction later on
+
+
+# tokenizing as usual
+toks <- tokens(inclusion_df$excerpts,
+               remove_punct=T, 
+               remove_symbols=T, 
+               remove_numbers=T, 
+               remove_separators=T) %>%
+  tokens_remove(pattern = stopwords("en"))
+  
+
+# only use features that appear at least X times in the corpus
+feats <- dfm(toks, tolower=T, verbose = FALSE) %>% 
+  dfm_trim(min_termfreq = 10) %>% 
+  featnames()
+
+# remove words not in feats from the original toks but leave the pads so that non-adjacent words will not become adjacent
+# rather than removing them which would mess up the original word positions
+toks_feats <- tokens_select(toks,
+                            feats,
+                            padding = TRUE)
+
+
+WINDOW_SIZE <- 6 # size of the window for counting co-occurence
+DIM <- 300 # dimensions of the embeddings = size of word embeddings
+ITERS <- 100 # iterations of the models
+COUNT_MIN <- 10 # minimum count of words that we want to keep
+
+# Construct the feature co-occurrence matrix for our tokens object
+toks_fcm <- fcm(toks_feats, 
+                context = "window", 
+                window = WINDOW_SIZE, 
+                count = "frequency", 
+                tri = FALSE) # important to set tri = FALSE; keeps a full matrix
+
+#head(toks_fcm)
+
+# ---------- 3. Estimate glove model using text2vec
+
+# Set parameters
+glove <- GlobalVectors$new(rank = DIM, 
+                           x_max = 10,
+                           learning_rate = 0.05)
+
+# Fit in a pythonic style!
+start = Sys.time()
+
+# Train the model
+wv_main <- glove$fit_transform(toks_fcm, 
+                               n_iter = ITERS,
+                               convergence_tol = 1e-3, 
+                               n_threads = parallel::detectCores()) # set to 'parallel::detectCores()' to use all available cores
+end = Sys.time()
+print(end-start)
+saveRDS(wv_main, file = file.path(root, "Raw_Data/local_glove_inclusion.rds"))
+saveRDS(glove, file = file.path(root, "Raw_Data/local_glove_context_inclusion.rds"))
+
+
+word_vectors_context <- glove$components
+#str(glove)
+
+inclusion_word_vectors <- wv_main + t(word_vectors_context) # combined word embedding matrix
+#word_vectors
+# features?
+#head(rownames(word_vectors))
+
+# Find nearest words to "inclusion"
+nearest_words <- function(word_vectors, keyword, n = 5) {
+  similarities <- sim2(x = word_vectors, y = word_vectors[keyword, , drop = FALSE], method = "cosine", norm = "l2")
+  head(sort(similarities[, 1], decreasing = TRUE)[-1], n)
+}
+
+nearest_words(inclusion_word_vectors, "inclusion", 5)
+
+```
+
+##### Equity
+
+```{r}
+
+#library(text2vec) # for implementation of GloVe algorithm
+#library(stringr) # to handle text strings
+#library(umap) # for dimensionality reduction later on
+
+
+# tokenizing as usual
+toks <- tokens(equity_df$excerpts,
+               remove_punct=T, 
+               remove_symbols=T, 
+               remove_numbers=T, 
+               remove_separators=T) %>%
+  tokens_remove(pattern = stopwords("en"))
+  
+
+# only use features that appear at least X times in the corpus
+feats <- dfm(toks, tolower=T, verbose = FALSE) %>% 
+  dfm_trim(min_termfreq = 10) %>% 
+  featnames()
+
+# remove words not in feats from the original toks but leave the pads so that non-adjacent words will not become adjacent
+# rather than removing them which would mess up the original word positions
+toks_feats <- tokens_select(toks,
+                            feats,
+                            padding = TRUE)
+
+
+WINDOW_SIZE <- 6 # size of the window for counting co-occurence
+DIM <- 300 # dimensions of the embeddings = size of word embeddings
+ITERS <- 100 # iterations of the models
+COUNT_MIN <- 10 # minimum count of words that we want to keep
+
+# Construct the feature co-occurrence matrix for our tokens object
+toks_fcm <- fcm(toks_feats, 
+                context = "window", 
+                window = WINDOW_SIZE, 
+                count = "frequency", 
+                tri = FALSE) # important to set tri = FALSE; keeps a full matrix
+
+#head(toks_fcm)
+
+# ---------- 3. Estimate glove model using text2vec
+
+# Set parameters
+glove <- GlobalVectors$new(rank = DIM, 
+                           x_max = 10,
+                           learning_rate = 0.05)
+
+# Fit in a pythonic style!
+start = Sys.time()
+
+# Train the model
+wv_main <- glove$fit_transform(toks_fcm, 
+                               n_iter = ITERS,
+                               convergence_tol = 1e-3, 
+                               n_threads = parallel::detectCores()) # set to 'parallel::detectCores()' to use all available cores
+end = Sys.time()
+print(end-start)
+#saveRDS(wv_main, file = file.path(root, "Raw_Data/local_glove_inclusion.rds"))
+#saveRDS(glove, file = file.path(root, "Raw_Data/local_glove_context_inclusion.rds"))
+
+
+word_vectors_context <- glove$components
+#str(glove)
+
+equity_word_vectors <- wv_main + t(word_vectors_context) # combined word embedding matrix
+#word_vectors
+# features?
+#head(rownames(word_vectors))
+
+nearest_words(equity_word_vectors, "equity", 5)
+
+```
+
+##### Diversity
+
+
+```{r}
+# tokenizing as usual
+toks <- tokens(diversity_df$excerpts,
+               remove_punct=T, 
+               remove_symbols=T, 
+               remove_numbers=T, 
+               remove_separators=T) %>%
+  tokens_remove(pattern = stopwords("en"))
+  
+
+# only use features that appear at least X times in the corpus
+feats <- dfm(toks, tolower=T, verbose = FALSE) %>% 
+  dfm_trim(min_termfreq = 10) %>% 
+  featnames()
+
+# remove words not in feats from the original toks but leave the pads so that non-adjacent words will not become adjacent
+# rather than removing them which would mess up the original word positions
+toks_feats <- tokens_select(toks,
+                            feats,
+                            padding = TRUE)
+
+
+WINDOW_SIZE <- 6 # size of the window for counting co-occurence
+DIM <- 300 # dimensions of the embeddings = size of word embeddings
+ITERS <- 100 # iterations of the models
+COUNT_MIN <- 10 # minimum count of words that we want to keep
+
+# Construct the feature co-occurrence matrix for our tokens object
+toks_fcm <- fcm(toks_feats, 
+                context = "window", 
+                window = WINDOW_SIZE, 
+                count = "frequency", 
+                tri = FALSE) # important to set tri = FALSE; keeps a full matrix
+
+#head(toks_fcm)
+
+# ---------- 3. Estimate glove model using text2vec
+
+# Set parameters
+glove <- GlobalVectors$new(rank = DIM, 
+                           x_max = 10,
+                           learning_rate = 0.05)
+
+# Fit in a pythonic style!
+start = Sys.time()
+
+# Train the model
+wv_main <- glove$fit_transform(toks_fcm, 
+                               n_iter = ITERS,
+                               convergence_tol = 1e-3, 
+                               n_threads = parallel::detectCores()) # set to 'parallel::detectCores()' to use all available cores
+end = Sys.time()
+print(end-start)
+
+
+word_vectors_context <- glove$components
+#str(glove)
+
+diversity_word_vectors <- wv_main + t(word_vectors_context) # combined word embedding matrix
+#word_vectors
+# features?
+#head(rownames(word_vectors))
+
+# Find nearest words to "inclusion"
+nearest_words <- function(word_vectors, keyword, n = 5) {
+  similarities <- sim2(x = word_vectors, y = word_vectors[keyword, , drop = FALSE], method = "cosine", norm = "l2")
+  head(sort(similarities[, 1], decreasing = TRUE)[-1], n)
+}
+
+nearest_words(inclusion_word_vectors, "diversity", 5)
+
+
+```
+
+### Causal Word Embeddings
+
+#### Inclusion
+
+```{r}
+inclusion_df$trump = case_when(inclusion_df$publication_date < '2021-01-20' ~ 1,
+                                   TRUE ~0)
+
+inclusion_df$year = year(inclusion_df$publication_date)
+
+inclusion_corpus = corpus(tolower(inclusion_df$excerpts), docvars = data.frame(year = inclusion_df$year, group = inclusion_df$trump))
+
+# tokenize
+toks <- tokens(inclusion_corpus, remove_punct = T, remove_symbols = T, remove_numbers = T, remove_url = T, remove_separators = T)
+
+# find contexts around empire
+toks_inclusion <- tokens_context(toks, "inclusion", window = 6L, valuetype = "fixed", hard_cut = FALSE, rm_keyword = TRUE, verbose = TRUE)
+
+# Create a feature co-occurrence matrix (FCM)
+fcm_inclusion <- fcm(toks, context = "window", tri = FALSE, window = 6)
+
+# Create transformation matrix from vectors
+transform_matrix_inclusion = compute_transform(fcm_inclusion,inclusion_word_vectors)
+
+
+#inclusion_models <- lapply(unique(docvars(toks_inclusion, 'year')), function(j){
+  #conText(formula =  . ~ group, data = toks_inclusion, pre_trained = pretrained, transform = TRUE, transform_matrix = transform_matrix_inclusion, bootstrap = FALSE, num_bootstraps = 100, confidence_level = 0.95, stratify = TRUE, permute = FALSE, num_permutations = 100, window = 6L, valuetype = 'fixed', case_insensitive = TRUE, hard_cut = FALSE, verbose = TRUE)
+ #})
+
+
+inclusion_model <- conText(
+  formula = . ~ group,
+  data = toks_inclusion,  # or subset if needed
+  pre_trained = inclusion_word_vectors,
+  transform = TRUE,
+  transform_matrix = transform_matrix_inclusion,
+  bootstrap = TRUE,
+  num_bootstraps = 100,
+  confidence_level = 0.95,
+  stratify = TRUE,
+  permute = TRUE,
+  num_permutations = 100,
+  window = 6L,
+  valuetype = 'fixed',
+  case_insensitive = TRUE,
+  hard_cut = FALSE,
+  verbose = TRUE
+)
+
+# coefficient plot
+plot_tibble <- inclusion_model@normed_coefficients %>% 
+  mutate(coefficient = c("Trump")) %>% 
+  mutate(coefficient = factor(coefficient, levels = coefficient))
+
+
+# assuming your tibble is named plot_tibble
+ggplot(plot_tibble, aes(x = coefficient, y = normed.estimate)) +
+  geom_pointrange(aes(ymin = lower.ci, ymax = upper.ci), size = 1) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "gray40") +
+  labs(
+    title = "Normalized Coefficient Estimate",
+    x = NULL,
+    y = "Normed Estimate (Beta)"
+  ) +
+  coord_flip()+
+  theme_minimal() +
+  theme(axis.text.x = element_text(size = 12))
+
+
+```
+
+#### Equity
+```{r}
+equity_df$trump = case_when(equity_df$publication_date < '2021-01-20' ~ 1,
+                                   TRUE ~0)
+
+equity_df$year = year(equity_df$publication_date)
+
+equity_corpus = corpus(tolower(equity_df$excerpts), docvars = data.frame(year = equity_df$year, group = equity_df$trump))
+
+# tokenize
+equity_toks <- tokens(equity_corpus, remove_punct = T, remove_symbols = T, remove_numbers = T, remove_url = T, remove_separators = T)
+
+# find contexts around empire
+toks_equity <- tokens_context(equity_toks, "equity", window = 6L, valuetype = "fixed", hard_cut = FALSE, rm_keyword = TRUE, verbose = TRUE)
+
+# Create a feature co-occurrence matrix (FCM)
+fcm_equity <- fcm(equity_toks, context = "window", tri = FALSE, window = 6)
+
+# Create transformation matrix from vectors
+transform_matrix_equity = compute_transform(fcm_equity,equity_word_vectors)
+
+
+#equity_models <- lapply(unique(docvars(toks_equity, 'year')), function(j){
+  #conText(formula =  . ~ group, data = toks_equity, pre_trained = pretrained, transform = TRUE, transform_matrix = transform_matrix_equity, bootstrap = FALSE, num_bootstraps = 100, confidence_level = 0.95, stratify = TRUE, permute = FALSE, num_permutations = 100, window = 6L, valuetype = 'fixed', case_insensitive = TRUE, hard_cut = FALSE, verbose = TRUE)
+ #})
+
+
+equity_model <- conText(
+  formula = . ~ group,
+  data = toks_equity,  # or subset if needed
+  pre_trained = equity_word_vectors,
+  transform = TRUE,
+  transform_matrix = transform_matrix_equity,
+  bootstrap = TRUE,
+  num_bootstraps = 100,
+  confidence_level = 0.95,
+  stratify = TRUE,
+  permute = TRUE,
+  num_permutations = 100,
+  window = 6L,
+  valuetype = 'fixed',
+  case_insensitive = TRUE,
+  hard_cut = FALSE,
+  verbose = TRUE
+)
+
+# coefficient plot
+equity_plot_tibble <- equity_model@normed_coefficients %>% 
+  mutate(coefficient = c("Trump")) %>% 
+  mutate(coefficient = factor(coefficient, levels = coefficient))
+
+
+# assuming your tibble is named plot_tibble
+ggplot(equity_plot_tibble, aes(x = coefficient, y = normed.estimate)) +
+  geom_pointrange(aes(ymin = lower.ci, ymax = upper.ci), size = 1) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "gray40") +
+  labs(
+    title = "Normalized Coefficient Estimate",
+    x = NULL,
+    y = "Normed Estimate (Beta)"
+  ) +
+  coord_flip()+
+  theme_minimal() +
+  theme(axis.text.x = element_text(size = 12))
+
+
+```
+
+#### Diversity
+
+```{r}
+diversity_df$trump = case_when(diversity_df$publication_date < '2021-01-20' ~ 1,
+                                   TRUE ~0)
+
+diversity_df$year = year(diversity_df$publication_date)
+
+diversity_corpus = corpus(tolower(diversity_df$excerpts), docvars = data.frame(year = diversity_df$year, group = diversity_df$trump))
+
+# tokenize
+diversity_toks <- tokens(diversity_corpus, remove_punct = T, remove_symbols = T, remove_numbers = T, remove_url = T, remove_separators = T)
+
+# find contexts around empire
+toks_diversity <- tokens_context(diversity_toks, "diversity", window = 6L, valuetype = "fixed", hard_cut = FALSE, rm_keyword = TRUE, verbose = TRUE)
+
+# Create a feature co-occurrence matrix (FCM)
+fcm_diversity <- fcm(diversity_toks, context = "window", tri = FALSE, window = 6)
+
+# Create transformation matrix from vectors
+transform_matrix_diversity = compute_transform(fcm_diversity,diversity_word_vectors)
+
+
+#diversity_models <- lapply(unique(docvars(toks_diversity, 'year')), function(j){
+  #conText(formula =  . ~ group, data = toks_diversity, pre_trained = pretrained, transform = TRUE, transform_matrix = transform_matrix_diversity, bootstrap = FALSE, num_bootstraps = 100, confidence_level = 0.95, stratify = TRUE, permute = FALSE, num_permutations = 100, window = 6L, valuetype = 'fixed', case_insensitive = TRUE, hard_cut = FALSE, verbose = TRUE)
+ #})
+
+
+diversity_model <- conText(
+  formula = . ~ group,
+  data = toks_diversity,  # or subset if needed
+  pre_trained = diversity_word_vectors,
+  transform = TRUE,
+  transform_matrix = transform_matrix_diversity,
+  bootstrap = TRUE,
+  num_bootstraps = 100,
+  confidence_level = 0.95,
+  stratify = TRUE,
+  permute = TRUE,
+  num_permutations = 100,
+  window = 6L,
+  valuetype = 'fixed',
+  case_insensitive = TRUE,
+  hard_cut = FALSE,
+  verbose = TRUE
+)
+
+# coefficient plot
+diversity_plot_tibble <- diversity_model@normed_coefficients %>% 
+  mutate(coefficient = c("Trump")) %>% 
+  mutate(coefficient = factor(coefficient, levels = coefficient))
+
+
+# assuming your tibble is named plot_tibble
+ggplot(diversity_plot_tibble, aes(x = coefficient, y = normed.estimate)) +
+  geom_pointrange(aes(ymin = lower.ci, ymax = upper.ci), size = 1) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "gray40") +
+  labs(
+    title = "Normalized Coefficient Estimate",
+    x = NULL,
+    y = "Normed Estimate (Beta)"
+  ) +
+  coord_flip()+
+  theme_minimal() +
+  theme(axis.text.x = element_text(size = 12))
+
+
+```
+
+### LDA
+
+#### Inclusion
+
+```{r}
+dfm_inclusion <- corpus(inclusion_df, text_field = "abstract") %>%
+  tokens(remove_punct = TRUE, remove_numbers = TRUE, remove_symbols = TRUE) %>%
+  dfm() %>%  
+  dfm_wordstem() %>%  
+  dfm_remove(stopwords("en")) 
+
+dfm_inclusion_clean <- dfm_trim(dfm_inclusion, min_docfreq = 1)
+
+# Remove empty documents
+dfm_inclusion_clean <- dfm_inclusion_clean[ntoken(dfm_inclusion_clean) > 0, ]
+
+library(topicmodels)
+# set a seed so that the output of the model is predictable
+lda <- LDA(dfm_inclusion_clean, k = 4, control = list(seed = 1234, alpha = 0.1), method = "Gibbs")
+lda
+
+library(tidytext)
+topics <- tidy(lda, matrix = "beta")
+
+
+top_terms <- topics %>%
+  group_by(topic) %>%
+  slice_max(beta, n = 10) %>% 
+  ungroup() %>%
+  arrange(topic, -beta)
+
+# Plot top words per topic
+top_terms %>%
+  mutate(term = reorder_within(term, beta, topic)) %>%
+  ggplot(aes(beta, term, fill = factor(topic))) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~ topic, scales = "free") +
+  scale_y_reordered() +
+  labs(title = "Top Words in Each Topic - Abstracts for Inclusion", x = "Word Probability (Beta)", y = "Word") +
+  theme_minimal()
+
+
+
+```
+
+
+#### Equity
+
+```{r}
+dfm_equity <- corpus(equity_df, text_field = "abstract") %>%
+  tokens(remove_punct = TRUE, remove_numbers = TRUE, remove_symbols = TRUE) %>%
+  dfm() %>%  
+  dfm_wordstem() %>%  
+  dfm_remove(stopwords("en")) 
+
+dfm_equity_clean <- dfm_trim(dfm_equity, min_docfreq = 1)
+
+# Remove empty documents
+dfm_equity_clean <- dfm_equity_clean[ntoken(dfm_equity_clean) > 0, ]
+
+# set a seed so that the output of the model is predictable
+equity_lda <- LDA(dfm_equity_clean, k = 3, control = list(seed = 1234, alpha = 0.1), method = "Gibbs")
+#equity_lda
+
+equity_topics <- tidy(equity_lda, matrix = "beta")
+
+
+equity_top_terms <- equity_topics %>%
+  group_by(topic) %>%
+  slice_max(beta, n = 10) %>% 
+  ungroup() %>%
+  arrange(topic, -beta)
+
+# Plot top words per topic
+equity_top_terms %>%
+  mutate(term = reorder_within(term, beta, topic)) %>%
+  ggplot(aes(beta, term, fill = factor(topic))) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~ topic, scales = "free") +
+  scale_y_reordered() +
+  labs(title = "Top Words in Each Topic - Abstracts for Equity", x = "Word Probability (Beta)", y = "Word") +
+  theme_minimal()
+
+
+
+```
+
+#### Diversity
+
+```{r}
+dfm_diversity <- corpus(diversity_df, text_field = "abstract") %>%
+  tokens(remove_punct = TRUE, remove_numbers = TRUE, remove_symbols = TRUE) %>%
+  dfm() %>%  
+  dfm_wordstem() %>%  
+  dfm_remove(stopwords("en")) 
+
+dfm_diversity_clean <- dfm_trim(dfm_diversity, min_docfreq = 1)
+
+# Remove empty documents
+dfm_diversity_clean <- dfm_diversity_clean[ntoken(dfm_diversity_clean) > 0, ]
+
+# set a seed so that the output of the model is predictable
+diversity_lda <- LDA(dfm_diversity_clean, k = 4, control = list(seed = 1234, alpha = 0.1), method = "Gibbs")
+#diversity_lda
+
+diversity_topics <- tidy(diversity_lda, matrix = "beta")
+
+
+diversity_top_terms <- diversity_topics %>%
+  group_by(topic) %>%
+  slice_max(beta, n = 10) %>% 
+  ungroup() %>%
+  arrange(topic, -beta)
+
+# Plot top words per topic
+diversity_top_terms %>%
+  mutate(term = reorder_within(term, beta, topic)) %>%
+  ggplot(aes(beta, term, fill = factor(topic))) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~ topic, scales = "free") +
+  scale_y_reordered() +
+  labs(title = "Top Words in Each Topic - Abstracts for Diversity", x = "Word Probability (Beta)", y = "Word") +
+  theme_minimal()
+
+
+
+```
+
+
+### LDA - Key words
+
+#### Inclusion
+
+```{r}
+dfm_inclusion_context <- corpus(inclusion_df, text_field = "excerpts") %>%
+  tokens(remove_punct = TRUE, remove_numbers = TRUE, remove_symbols = TRUE) %>%
+  tokens_context(pattern = 'inclusion', window = 6L, valuetype = "fixed", hard_cut = FALSE, rm_keyword = TRUE, verbose = TRUE) %>%
+  dfm() %>%  
+  dfm_wordstem() %>%  
+  dfm_remove(stopwords("en")) 
+
+dfm_inclusion_clean_context <- dfm_trim(dfm_inclusion_context, min_docfreq = 1)
+
+# Remove empty documents
+dfm_inclusion_clean_context <- dfm_inclusion_clean_context[ntoken(dfm_inclusion_clean_context) > 0, ]
+
+# set a seed so that the output of the model is predictable
+lda_context <- LDA(dfm_inclusion_clean_context, k = 3, control = list(seed = 1234))
+#lda
+
+topics_context <- tidy(lda_context, matrix = "beta")
+
+
+top_terms_context <- topics_context %>%
+  group_by(topic) %>%
+  slice_max(beta, n = 10) %>% 
+  ungroup() %>%
+  arrange(topic, -beta)
+
+# Plot top words per topic
+top_terms_context %>%
+  mutate(term = reorder_within(term, beta, topic)) %>%
+  ggplot(aes(beta, term, fill = factor(topic))) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~ topic, scales = "free") +
+  scale_y_reordered() +
+  labs(title = "Top Words in Each Topic - Keyword for Inclusion", x = "Word Probability (Beta)", y = "Word") +
+  theme_minimal()
+
+
+```
+
+#### Equity
+
+```{r}
+dfm_equity_context <- corpus(equity_df, text_field = "excerpts") %>%
+  tokens(remove_punct = TRUE, remove_numbers = TRUE, remove_symbols = TRUE) %>%
+  tokens_context(pattern = 'equity', window = 6L, valuetype = "fixed", hard_cut = FALSE, rm_keyword = TRUE, verbose = TRUE) %>%
+  dfm() %>%  
+  dfm_wordstem() %>%  
+  dfm_remove(stopwords("en")) 
+
+dfm_equity_clean_context <- dfm_trim(dfm_equity_context, min_docfreq = 1)
+
+# Remove empty documents
+dfm_equity_clean_context <- dfm_equity_clean_context[ntoken(dfm_equity_clean_context) > 0, ]
+
+# set a seed so that the output of the model is predictable
+equity_lda_context <- LDA(dfm_equity_clean_context, k = 2, control = list(seed = 1234))
+#lda
+
+equity_topics_context <- tidy(equity_lda_context, matrix = "beta")
+
+
+equity_top_terms_context <- equity_topics_context %>%
+  group_by(topic) %>%
+  slice_max(beta, n = 10) %>% 
+  ungroup() %>%
+  arrange(topic, -beta)
+
+# Plot top words per topic
+equity_top_terms_context %>%
+  mutate(term = reorder_within(term, beta, topic)) %>%
+  ggplot(aes(beta, term, fill = factor(topic))) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~ topic, scales = "free") +
+  scale_y_reordered() +
+  labs(title = "Top Words in Each Topic - Keyword for Equity", x = "Word Probability (Beta)", y = "Word") +
+  theme_minimal()
+
+
+```
+
+#### Diversity
+```{r}
+dfm_diversity_context <- corpus(diversity_df, text_field = "excerpts") %>%
+  tokens(remove_punct = TRUE, remove_numbers = TRUE, remove_symbols = TRUE) %>%
+  tokens_context(pattern = 'diversity', window = 6L, valuetype = "fixed", hard_cut = FALSE, rm_keyword = TRUE, verbose = TRUE) %>%
+  dfm() %>%  
+  dfm_wordstem() %>%  
+  dfm_remove(stopwords("en")) 
+
+dfm_diversity_clean_context <- dfm_trim(dfm_diversity_context, min_docfreq = 1)
+
+# Remove empty documents
+dfm_diversity_clean_context <- dfm_diversity_clean_context[ntoken(dfm_diversity_clean_context) > 0, ]
+
+# set a seed so that the output of the model is predictable
+diversity_lda_context <- LDA(dfm_diversity_clean_context, k = 3, control = list(seed = 1234))
+#lda
+
+diversity_topics_context <- tidy(diversity_lda_context, matrix = "beta")
+
+
+diversity_top_terms_context <- diversity_topics_context %>%
+  group_by(topic) %>%
+  slice_max(beta, n = 10) %>% 
+  ungroup() %>%
+  arrange(topic, -beta)
+
+# Plot top words per topic
+diversity_top_terms_context %>%
+  mutate(term = reorder_within(term, beta, topic)) %>%
+  ggplot(aes(beta, term, fill = factor(topic))) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~ topic, scales = "free") +
+  scale_y_reordered() +
+  labs(title = "Top Words in Each Topic - Keyword for Diversity", x = "Word Probability (Beta)", y = "Word") +
+  theme_minimal()
+
+
+```
